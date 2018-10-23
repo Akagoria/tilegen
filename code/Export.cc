@@ -207,7 +207,7 @@ namespace tlgn {
       if (terrain.fences.count > 0) {
         os << ">\n";
         os << "\t<properties>\n";
-        os << "\t\t<property name=\"fenceCount\" value=\"" << terrain.fences.count << "\"/></property>\n";
+        os << "\t\t<property name=\"fence_count\" type=\"int\" value=\"" << terrain.fences.count << "\" />\n";
 
         for (int i = 0; i < terrain.fences.count; ++i) {
           os << "\t\t<property name=\"fence" << i << "\" value=\"" << dumpTerrainFence(terrain.fences.fence[i].d1) << dumpTerrainFence(terrain.fences.fence[i].d2)  << "\"/>\n";
