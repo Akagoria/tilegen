@@ -28,9 +28,11 @@ namespace tlgn {
 
   }
 
-  Tile::Tile(gf::Id biome)
-  : pixels({ TileSize, TileSize }, biome)
-  , colors({ TileSizeExt, TileSizeExt })
+  Tile::Tile(const TileSettings& settings, gf::Id biome)
+  : size(settings.size)
+  , spacing(settings.spacing)
+  , pixels(settings.getTileSize(), biome)
+  , colors(settings.getExtendedTileSize())
   , terrain({ gf::InvalidId, gf::InvalidId, gf::InvalidId, gf::InvalidId })
   , id(-1)
   {
@@ -39,18 +41,21 @@ namespace tlgn {
   }
 
   Tile::Tile(gf::NoneType)
+  : size(0)
   {
     fences.count = 0;
     borders.count = 0;
   }
 
   void Tile::rotate(int quarters) {
-    for (int q = 0; q < quarters; ++q) {
-      for (int i = 0; i < TileSize2; ++i) {
-        int iprime = TileSize - 1 - i;
+    int half = size / 2;
 
-        for (int j = 0; j < TileSize2; ++j) {
-          int jprime = TileSize - 1 - j;
+    for (int q = 0; q < quarters; ++q) {
+      for (int i = 0; i < half; ++i) {
+        int iprime = size - 1 - i;
+
+        for (int j = 0; j < half; ++j) {
+          int jprime = size - 1 - j;
 
           auto tmp = pixels({ i, j });
           pixels({ i, j }) = pixels({ jprime, i });
@@ -88,13 +93,14 @@ namespace tlgn {
 
       if (id == gf::InvalidId) {
         auto& invalid = pixels(pos);
-        pixels.visit4Neighbors(pos, [&invalid](gf::Vector2i next, gf::Id nextBiome) {
-          gf::unused(next);
+
+        for (auto next : pixels.get4NeighborsRange(pos)) {
+          gf::Id nextBiome = pixels(next);
 
           if (nextBiome != gf::InvalidId) {
             invalid = nextBiome;
           }
-        });
+        }
       }
 
       assert(pixels(pos) != gf::InvalidId);
@@ -148,7 +154,7 @@ namespace tlgn {
           continue;
         }
 
-        int minDistance = TileSize * 2;
+        int minDistance = size * 2;
 
         for (auto neighbor : pixels.getPositionRange()) {
           if (pixels(neighbor) != other) {
@@ -162,7 +168,7 @@ namespace tlgn {
           }
         }
 
-        auto colorPos = pos + 1;
+        auto colorPos = pos + spacing;
         auto color = colors(colorPos);
 
         switch (border.effect) {
@@ -199,7 +205,8 @@ namespace tlgn {
               float finalCoeff = 36.0f;
               gf::Color4f finalColor = finalCoeff * colors(colorPos);
 
-              colors.visit24Neighbors(colorPos, [colorPos,&finalColor,&finalCoeff](gf::Vector2i next, gf::Color4f nextColor) {
+              for (auto next : colors.get24NeighborsRange(colorPos)) {
+                gf::Color4f nextColor = colors(next);
                 gf::Vector2i diff = gf::abs(colorPos - next);
 
                 if (diff == gf::Vector2i(1, 0) || diff == gf::Vector2i(0, 1)) {
@@ -220,7 +227,7 @@ namespace tlgn {
                 } else {
                   assert(false);
                 }
-              });
+              }
 
               color = finalColor / finalCoeff;
             }
@@ -241,18 +248,18 @@ namespace tlgn {
   }
 
   void Tile::fillColorsBorder() {
-    for (int i = 0; i < TileSize; ++i) {
+    for (int i = 0; i < size; ++i) {
       // top
       colors({ 1 + i, 0 }) = colors({ 1 + i, 1 });
       // bottom
-      colors({ 1 + i, TileSize + 1 }) = colors({ 1 + i, TileSize });
+      colors({ 1 + i, size + 1 }) = colors({ 1 + i, size });
     }
 
-    for (int i = 0; i < TileSizeExt; ++i) {
+    for (int i = 0; i < size / 2; ++i) {
       // left
       colors({ 0, i }) = colors({ 1, i });
       // right
-      colors({ TileSize + 1, i }) = colors({ TileSize, i });
+      colors({ size + 1, i }) = colors({ size, i });
     }
   }
 

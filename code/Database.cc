@@ -109,13 +109,23 @@ namespace tlgn {
 
     Database db;
 
+    db.settings.name = j["settings"]["name"].get<std::string>();
+    db.settings.tile.size = j["settings"]["tile"]["size"].get<int>();
+    assert(db.settings.tile.size > 0);
+    db.settings.tile.spacing = j["settings"]["tile"]["spacing"].get<int>();
+    assert(db.settings.tile.spacing >= 0);
+
+    auto image = j["settings"]["image"];
+    db.settings.image = gf::Vector2i(image[0], image[1]);
+    assert(db.settings.image.width > 0 && db.settings.image.height > 0);
+
     for (auto kv : j["biomes"].items()) {
       Biome biome;
       biome.index = std::stoi(kv.key());
 
       auto value = kv.value();
-      biome.id = gf::hash(value["id"].get<std::string>());
-      biome.name = value["name"].get<std::string>();
+      biome.name = value["id"].get<std::string>();
+      biome.id = gf::hash(biome.name);
 
       gf::Color4u color;
       color.r = value["color"][0].get<uint8_t>();

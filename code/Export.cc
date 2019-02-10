@@ -28,7 +28,7 @@ namespace tlgn {
 
   }
 
-  void exportTilesetsToImage(std::vector<Tileset>& tilesets, Colors& image, ImageContext& ctx) {
+  void exportTilesetsToImage(std::vector<Tileset>& tilesets, const Settings& settings, Colors& image, ImageContext& ctx) {
     auto imageSize = image.getSize();
     auto tilesetSize = tilesets.front().getSize();
 
@@ -37,10 +37,10 @@ namespace tlgn {
 
     gf::Vector2i offset(0, ctx.startingPixelRow);
 
-    int tilesetsPerRow = imageSize.width / (TileSizeExt * tilesetSize.width);
+    int tilesetsPerRow = imageSize.width / (settings.tile.getExtendedSize() * tilesetSize.width);
 
-    int tilesPerRow = imageSize.width / TileSizeExt;
-    int idOffset = (ctx.startingPixelRow / TileSizeExt) * tilesPerRow;
+    int tilesPerRow = imageSize.width / settings.tile.getExtendedSize();
+    int idOffset = (ctx.startingPixelRow / settings.tile.getExtendedSize()) * tilesPerRow;
 
 //     std::cout << std::dec << "startingRow: " << startingRow << '\n';
 //     std::cout << std::dec << "tilesPerRow: " << tilesPerRow << '\n';
@@ -66,7 +66,7 @@ namespace tlgn {
         offsetTile.x = indexTile % tilesetSize.width;
         offsetTile.y = indexTile / tilesetSize.width;
 
-        gf::Vector2i totalOffset = offset + (offsetTileset * tilesetSize + offsetTile) * TileSizeExt;
+        gf::Vector2i totalOffset = offset + (offsetTileset * tilesetSize + offsetTile) * settings.tile.getExtendedSize();
 
 //         std::cout << "offset: " << std::dec << offset.x << ',' << offset.y << '\n';
 //         std::cout << "offsetTileset: " << std::dec << offsetTileset.x << ',' << offsetTileset.y << '\n';
@@ -84,7 +84,7 @@ namespace tlgn {
     }
 
     int numberOfRows = (tilesets.size() - 1) / tilesetsPerRow + 1;
-    ctx.startingPixelRow += numberOfRows * tilesetSize.height * TileSizeExt;
+    ctx.startingPixelRow += numberOfRows * tilesetSize.height * settings.tile.getExtendedSize();
   }
 
   void exportImageToFile(const Colors& image, std::ostream& os) {
@@ -167,38 +167,60 @@ namespace tlgn {
       return "?";
     }
 
+    template<typename T>
+    struct KV {
+      const char *key;
+      T value;
+    };
+
+    template<typename T>
+    KV<T> kv(const char * key, T value) {
+      return { key, value };
+    }
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream& os, const KV<T>& kv) {
+      return os << kv.key << '=' << '"' << kv.key << '"';
+    }
+
   }
 
   void exportTerrainsToFile(const Terrains& terrains, const Database& db, std::ostream& os) {
-    static constexpr int TileCount = ImageSize / TileSizeExt;
+    gf::Vector2i tileCount = db.settings.image / db.settings.tile.getExtendedTileSize();
 
-    os << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-    os << "<tileset name=\"Biomes\" tilewidth=\"" << TileSize << "\" tileheight=\"" << TileSize << "\" tilecount=\"" << (TileCount * TileCount) << "\" columns=\"" << TileCount << "\" spacing=\"2\" margin=\"1\">\n";
-    os << "<image source=\"biomes.png\" width=\"" << ImageSize << "\" height=\"" << ImageSize << "\"/>\n";
+    os << "<?xml " << kv("version", "1.0") << ' ' << kv("encoding", "UTF-8") << "?>\n";
+    os << "<tileset " << kv("name", db.settings.name) << ' '
+        << kv("tilewidth", db.settings.tile.size) << ' ' << kv("tileheight", db.settings.tile.size) << ' '
+        << kv("tilecount", tileCount.width * tileCount.height) << ' ' << kv("columns", tileCount.width) << ' '
+        << kv("spacing", db.settings.tile.spacing * 2) << ' ' << kv("margin", db.settings.tile.spacing)
+        << ">\n";
+    os << "<image " << kv("source", "biomes.png") << ' ' // TODO: pass the source name in the parameter
+        << kv("width", db.settings.image.width) << ' ' << kv("height", db.settings.image.height)
+        << "/>\n";
 
     os << "<terraintypes>\n";
 
     std::map<int, std::reference_wrapper<const Biome>> biomes;
 
-    for (auto& kv : db.biomes) {
-      biomes.insert({ kv.second.index, kv.second });
+    for (auto& pair : db.biomes) {
+      biomes.insert({ pair.second.index, pair.second });
     }
 
     int index = 0;
 
-    for (auto& kv : biomes) {
-      assert(kv.first == index);
-      const Biome& biome = kv.second;
-      os << "  <terrain name=\"" << biome.name << "\" tile=\"" << findTerrainBiome(terrains, biome.index) << "\"/>\n";
+    for (auto& pair : biomes) {
+      assert(pair.first == index);
+      const Biome& biome = pair.second;
+      os << "\t<terrain " << kv("name", biome.name) << ' ' << kv("tile", findTerrainBiome(terrains, biome.index)) << "/>\n";
       index++;
     }
 
     os << "</terraintypes>\n";
 
-    for (auto& kv : terrains) {
-      const Terrain& terrain = kv.second;
+    for (auto& pair : terrains) {
+      const Terrain& terrain = pair.second;
 
-      os << "<tile id=\"" << kv.first << "\" terrain=\""
+      os << "<tile id=\"" << pair.first << "\" terrain=\""
         << dumpTerrainIndex(terrain.indices[0]) << ','
         << dumpTerrainIndex(terrain.indices[1]) << ','
         << dumpTerrainIndex(terrain.indices[2]) << ','
@@ -207,7 +229,7 @@ namespace tlgn {
       if (terrain.fences.count > 0) {
         os << ">\n";
         os << "\t<properties>\n";
-        os << "\t\t<property name=\"fence_count\" type=\"int\" value=\"" << terrain.fences.count << "\" />\n";
+        os << "\t\t<property " << kv("name", "fence_count") << ' ' << kv("type", "int") << kv("value", terrain.fences.count) << " />\n";
 
         for (int i = 0; i < terrain.fences.count; ++i) {
           os << "\t\t<property name=\"fence" << i << "\" value=\"" << dumpTerrainFence(terrain.fences.fence[i].d1) << dumpTerrainFence(terrain.fences.fence[i].d2)  << "\"/>\n";

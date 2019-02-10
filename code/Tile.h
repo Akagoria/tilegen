@@ -36,8 +36,11 @@ namespace tlgn {
   constexpr std::size_t TerrainBottomRight = 3;
 
   struct Tile {
-    Tile(gf::Id biome = gf::InvalidId);
+    Tile(const TileSettings& settings, gf::Id biome = gf::InvalidId);
     Tile(gf::NoneType);
+
+    int size;
+    int spacing;
 
     Pixels pixels;
     Colors colors;

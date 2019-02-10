@@ -5,10 +5,13 @@
 #include <gf/Path.h>
 
 #include "Biomes.h"
+#include "Settings.h"
 
 namespace tlgn {
 
   struct Database {
+    Settings settings;
+
     std::map<gf::Id, Biome> biomes;
     std::vector<BiomeDuo> duos;
     std::vector<BiomeTrio> trios;

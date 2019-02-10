@@ -83,12 +83,12 @@ int main(int argc, char *argv[]) {
 
   std::cout << "Computing biome image...\n";
 
-  tlgn::Colors image({ tlgn::ImageSize, tlgn::ImageSize });
+  tlgn::Colors image(db.settings.image);
 
   tlgn::ImageContext ctx;
-  tlgn::exportTilesetsToImage(wang2, image, ctx);
-  tlgn::exportTilesetsToImage(wang3, image, ctx);
-  tlgn::exportTilesetsToImage(overlays, image, ctx);
+  tlgn::exportTilesetsToImage(wang2, db.settings, image, ctx);
+  tlgn::exportTilesetsToImage(wang3, db.settings, image, ctx);
+  tlgn::exportTilesetsToImage(overlays, db.settings, image, ctx);
 
   std::cout << "Generating biome image...\n";
 

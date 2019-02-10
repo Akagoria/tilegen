@@ -1,16 +1,34 @@
 #ifndef TILEGEN_SETTINGS_H
 #define TILEGEN_SETTINGS_H
 
+#include <string>
+
+#include <gf/Vector.h>
+
 namespace tlgn {
 
-  constexpr int TileSize = 32;
-  constexpr int TileSize2 = TileSize / 2;
-  constexpr int TileSizeExt = TileSize + 2;
+  struct TileSettings {
+    int size;
+    int spacing;
 
-//   constexpr int ImageSize = 2048;
-//   constexpr int ImageSize = 2176;
-//   constexpr int ImageSize = 1224;
-  constexpr int ImageSize = 1536;
+    gf::Vector2i getTileSize() const {
+      return { size, size };
+    }
+
+    int getExtendedSize() const {
+      return size + 2 * spacing;
+    }
+
+    gf::Vector2i getExtendedTileSize() const {
+      return { getExtendedSize(), getExtendedSize() };
+    }
+  };
+
+  struct Settings {
+    std::string name;
+    TileSettings tile;
+    gf::Vector2i image;
+  };
 
 } // namespace tlgn
 

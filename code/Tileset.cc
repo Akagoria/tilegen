@@ -4,32 +4,48 @@
 
 #include <gf/ArrayRef.h>
 #include <gf/Geometry.h>
+#include <gf/Unused.h>
 #include <gf/VectorOps.h>
 
 namespace tlgn {
 
   namespace {
 
-    constexpr gf::Vector2i top(int i) {
+    constexpr gf::Vector2i top(const TileSettings& settings, int i) {
+      gf::unused(settings);
       return { i, 0 };
     }
 
-    constexpr gf::Vector2i bottom(int i) {
-      return { i, TileSize - 1 };
+    constexpr gf::Vector2i bottom(const TileSettings& settings, int i) {
+      return { i, settings.size - 1 };
     }
 
-    constexpr gf::Vector2i left(int i) {
+    constexpr gf::Vector2i left(const TileSettings& settings, int i) {
+      gf::unused(settings);
       return { 0, i };
     }
 
-    constexpr gf::Vector2i right(int i) {
-      return { TileSize - 1, i };
+    constexpr gf::Vector2i right(const TileSettings& settings, int i) {
+      return { settings.size - 1, i };
     }
 
-    constexpr gf::Vector2i CornerTopLeft(0, 0);
-    constexpr gf::Vector2i CornerTopRight(TileSize - 1, 0);
-    constexpr gf::Vector2i CornerBottomLeft(0, TileSize - 1);
-    constexpr gf::Vector2i CornerBottomRight(TileSize - 1, TileSize - 1);
+    constexpr gf::Vector2i cornerTopLeft(const TileSettings& settings) {
+      gf::unused(settings);
+      return { 0, 0 };
+    }
+
+    constexpr gf::Vector2i cornerTopRight(const TileSettings& settings) {
+      return { settings.size - 1, 0 };
+    }
+
+    constexpr gf::Vector2i cornerBottomLeft(const TileSettings& settings) {
+      return { 0, settings.size - 1 };
+    }
+
+    constexpr gf::Vector2i cornerBottomRight(const TileSettings& settings) {
+      return { settings.size - 1, settings.size - 1 };
+    }
+
 
     void fillBiomeFrom(Pixels& pixels, gf::Vector2i pos, gf::Id biome) {
       pixels(pos) = biome;
@@ -42,12 +58,14 @@ namespace tlgn {
 
         assert(pixels(curr) == biome);
 
-        pixels.visit4Neighbors(curr, [&pixels,&q,biome](gf::Vector2i next, gf::Id nextBiome) {
+        for (auto next : pixels.get4NeighborsRange(curr)) {
+          gf::Id nextBiome = pixels(next);
+
           if (nextBiome == gf::InvalidId) {
             pixels(next) = biome;
             q.push(next);
           }
-        });
+        }
 
         q.pop();
       }
@@ -55,7 +73,7 @@ namespace tlgn {
     }
 
 
-    std::vector<gf::Vector2i> makeLine(gf::ArrayRef<gf::Vector2i> points, gf::Random& random) {
+    std::vector<gf::Vector2i> makeLine(const TileSettings& settings, gf::ArrayRef<gf::Vector2i> points, gf::Random& random) {
       constexpr unsigned GenerationIterations = 2;
       constexpr float InitialFactor = 0.5f;
       constexpr float ReductionFactor = 0.6f;
@@ -75,7 +93,7 @@ namespace tlgn {
       // normalize
 
       for (auto& point : tmp) {
-        point = gf::clamp(point, 0, TileSize - 1);
+        point = gf::clamp(point, 0, settings.size - 1);
       }
 
       // compute final line
@@ -96,8 +114,8 @@ namespace tlgn {
      * Two Corner Wang Tileset generators
      */
 
-    Tile generateFull(gf::Id biome) {
-      Tile tile(biome);
+    Tile generateFull(const TileSettings& settings, gf::Id biome) {
+      Tile tile(settings, biome);
       tile.terrain[TerrainTopLeft] = tile.terrain[TerrainTopRight] = tile.terrain[TerrainBottomLeft] = tile.terrain[TerrainBottomRight] = biome;
       return tile;
     }
@@ -108,30 +126,31 @@ namespace tlgn {
     };
 
     // b1 is in the left|top, b2 is in the right|bottom
-    Tile generateSplit(gf::Id b1, gf::Id b2, Split s, gf::Random& random, const Frontier& frontier) {
-      Tile tile;
+    Tile generateSplit(const TileSettings& settings, gf::Id b1, gf::Id b2, Split s, gf::Random& random, const Frontier& frontier) {
+      Tile tile(settings);
 
       gf::Vector2i start, stop;
+      int half = settings.size / 2;
 
       switch (s) {
         case Split::Horizontal:
-          start = left(TileSize2 + frontier.offset);
-          stop = right(TileSize2 + frontier.offset);
+          start = left(settings, half + frontier.offset);
+          stop = right(settings, half + frontier.offset);
           break;
         case Split::Vertical:
-          start = top(TileSize2 + frontier.offset);
-          stop = bottom(TileSize2 + frontier.offset);
+          start = top(settings, half + frontier.offset);
+          stop = bottom(settings, half + frontier.offset);
           break;
       }
 
-      auto line = makeLine({ start, stop }, random);
+      auto line = makeLine(settings, { start, stop }, random);
 
       for (auto point : line) {
         tile.pixels(point) = b2;
       }
 
-      fillBiomeFrom(tile.pixels, CornerTopLeft, b1);
-      fillBiomeFrom(tile.pixels, CornerBottomRight, b2);
+      fillBiomeFrom(tile.pixels, cornerTopLeft(settings), b1);
+      fillBiomeFrom(tile.pixels, cornerBottomRight(settings), b2);
 
       switch (s) {
         case Split::Horizontal:
@@ -176,31 +195,32 @@ namespace tlgn {
     };
 
     // b1 is in the corner, b2 is in the rest
-    Tile generateCorner(gf::Id b1, gf::Id b2, Corner c, gf::Random& random, const Frontier& frontier) {
-      Tile tile;
+    Tile generateCorner(const TileSettings& settings, gf::Id b1, gf::Id b2, Corner c, gf::Random& random, const Frontier& frontier) {
+      Tile tile(settings);
 
       gf::Vector2i start, stop;
+      int half = settings.size / 2;
 
       switch (c) {
         case Corner::TopLeft:
-          start = top(TileSize2 - 1 + frontier.offset);
-          stop = left(TileSize2 - 1 + frontier.offset);
+          start = top(settings, half - 1 + frontier.offset);
+          stop = left(settings, half - 1 + frontier.offset);
           break;
         case Corner::TopRight:
-          start = top(TileSize2 - frontier.offset);
-          stop = right(TileSize2 - 1 + frontier.offset);
+          start = top(settings, half - frontier.offset);
+          stop = right(settings, half - 1 + frontier.offset);
           break;
         case Corner::BottomLeft:
-          start = bottom(TileSize2 - 1 + frontier.offset);
-          stop = left(TileSize2 - frontier.offset);
+          start = bottom(settings, half - 1 + frontier.offset);
+          stop = left(settings, half - frontier.offset);
           break;
         case Corner::BottomRight:
-          start = bottom(TileSize2 - frontier.offset);
-          stop = right(TileSize2 - frontier.offset);
+          start = bottom(settings, half - frontier.offset);
+          stop = right(settings, half - frontier.offset);
           break;
       }
 
-      auto line = makeLine({ start, stop }, random);
+      auto line = makeLine(settings, { start, stop }, random);
 
       for (auto point : line) {
         tile.pixels(point) = b1;
@@ -208,20 +228,20 @@ namespace tlgn {
 
       switch (c) {
         case Corner::TopLeft:
-          fillBiomeFrom(tile.pixels, CornerTopLeft, b1);
-          fillBiomeFrom(tile.pixels, CornerBottomRight, b2);
+          fillBiomeFrom(tile.pixels, cornerTopLeft(settings), b1);
+          fillBiomeFrom(tile.pixels, cornerBottomRight(settings), b2);
           break;
         case Corner::TopRight:
-          fillBiomeFrom(tile.pixels, CornerTopRight, b1);
-          fillBiomeFrom(tile.pixels, CornerBottomLeft, b2);
+          fillBiomeFrom(tile.pixels, cornerTopRight(settings), b1);
+          fillBiomeFrom(tile.pixels, cornerBottomLeft(settings), b2);
           break;
         case Corner::BottomLeft:
-          fillBiomeFrom(tile.pixels, CornerBottomLeft, b1);
-          fillBiomeFrom(tile.pixels, CornerTopRight, b2);
+          fillBiomeFrom(tile.pixels, cornerBottomLeft(settings), b1);
+          fillBiomeFrom(tile.pixels, cornerTopRight(settings), b2);
           break;
         case Corner::BottomRight:
-          fillBiomeFrom(tile.pixels, CornerBottomRight, b1);
-          fillBiomeFrom(tile.pixels, CornerTopLeft, b2);
+          fillBiomeFrom(tile.pixels, cornerBottomRight(settings), b1);
+          fillBiomeFrom(tile.pixels, cornerTopLeft(settings), b2);
           break;
       }
 
@@ -273,29 +293,30 @@ namespace tlgn {
     }
 
     // b1 is in top-left and bottom-right, b2 is in top-right and bottom-left
-    Tile generateCross(gf::Id b1, gf::Id b2, gf::Random& random, const Frontier& frontier) {
-      Tile tile;
+    Tile generateCross(const TileSettings& settings, gf::Id b1, gf::Id b2, gf::Random& random, const Frontier& frontier) {
+      Tile tile(settings);
+      int half = settings.size / 2;
 
-      gf::Vector2i limitTopRight[] = { top(TileSize2 + frontier.offset), { TileSize2, TileSize2 - 1 }, right(TileSize2 - 1 - frontier.offset) };
+      gf::Vector2i limitTopRight[] = { top(settings, half + frontier.offset), { half, half - 1 }, right(settings, half - 1 - frontier.offset) };
 
-      auto lineTopRight = makeLine(limitTopRight, random);
+      auto lineTopRight = makeLine(settings, limitTopRight, random);
 
       for (auto point : lineTopRight) {
         tile.pixels(point) = b2;
       }
 
-      gf::Vector2i limitBottomLeft[] = { bottom(TileSize2 - 1 - frontier.offset), { TileSize2 - 1, TileSize2 }, left(TileSize2 + frontier.offset) };
+      gf::Vector2i limitBottomLeft[] = { bottom(settings, half - 1 - frontier.offset), { half - 1, half }, left(settings, half + frontier.offset) };
 
-      auto lineBottomLeft = makeLine(limitBottomLeft, random);
+      auto lineBottomLeft = makeLine(settings, limitBottomLeft, random);
 
       for (auto point : lineBottomLeft) {
         tile.pixels(point) = b2;
       }
 
-      fillBiomeFrom(tile.pixels, CornerTopLeft, b1);
-      fillBiomeFrom(tile.pixels, CornerBottomRight, b1);
-      fillBiomeFrom(tile.pixels, CornerTopRight, b2);
-      fillBiomeFrom(tile.pixels, CornerBottomLeft, b2);
+      fillBiomeFrom(tile.pixels, cornerTopLeft(settings), b1);
+      fillBiomeFrom(tile.pixels, cornerBottomRight(settings), b1);
+      fillBiomeFrom(tile.pixels, cornerTopRight(settings), b2);
+      fillBiomeFrom(tile.pixels, cornerBottomLeft(settings), b2);
 
       tile.terrain[TerrainTopLeft] = tile.terrain[TerrainBottomRight] = b1;
       tile.terrain[TerrainTopRight] = tile.terrain[TerrainBottomLeft] = b2;
@@ -320,28 +341,29 @@ namespace tlgn {
      */
 
     // b1 is top, b2 is in bottom-left, b3 is in bottom-right
-    Tile generate211(gf::Id b1, gf::Id b2, gf::Id b3, gf::Random& random, const Frontier& frontier12, const Frontier& frontier23, const Frontier& frontier31) {
-      Tile tile;
+    Tile generate211(const TileSettings& settings, gf::Id b1, gf::Id b2, gf::Id b3, gf::Random& random, const Frontier& frontier12, const Frontier& frontier23, const Frontier& frontier31) {
+      Tile tile(settings);
+      int half = settings.size / 2;
 
-      gf::Vector2i limitBottomLeft[] = { left(TileSize2 + frontier12.offset), /* { TileSize2 - 1, TileSize2 }, */ bottom(TileSize2 - 1 + frontier23.offset) };
+      gf::Vector2i limitBottomLeft[] = { left(settings, half + frontier12.offset), /* { half - 1, half }, */ bottom(settings, half - 1 + frontier23.offset) };
 
-      auto lineBottomLeft = makeLine(limitBottomLeft, random);
+      auto lineBottomLeft = makeLine(settings, limitBottomLeft, random);
 
       for (auto point : lineBottomLeft) {
         tile.pixels(point) = b2;
       }
 
-      gf::Vector2i limitBottomRight[] = { right(TileSize2 - frontier31.offset), /* { TileSize2, TileSize2 }, */ bottom(TileSize2 + frontier23.offset) };
+      gf::Vector2i limitBottomRight[] = { right(settings, half - frontier31.offset), /* { half, half }, */ bottom(settings, half + frontier23.offset) };
 
-      auto lineBottomRight = makeLine(limitBottomRight, random);
+      auto lineBottomRight = makeLine(settings, limitBottomRight, random);
 
       for (auto point : lineBottomRight) {
         tile.pixels(point) = b3;
       }
 
-      fillBiomeFrom(tile.pixels, CornerTopLeft, b1);
-      fillBiomeFrom(tile.pixels, CornerBottomLeft, b2);
-      fillBiomeFrom(tile.pixels, CornerBottomRight, b3);
+      fillBiomeFrom(tile.pixels, cornerTopLeft(settings), b1);
+      fillBiomeFrom(tile.pixels, cornerBottomLeft(settings), b2);
+      fillBiomeFrom(tile.pixels, cornerBottomRight(settings), b3);
 
       tile.terrain[TerrainTopLeft] = tile.terrain[TerrainTopRight] = b1;
       tile.terrain[TerrainBottomLeft] = b2;
@@ -371,29 +393,30 @@ namespace tlgn {
       return tile;
     }
 
-    Tile generate211Cross(gf::Id b1, gf::Id b2, gf::Id b3, gf::Random& random, const Frontier& frontier12, const Frontier& frontier31) {
-      Tile tile;
+    Tile generate211Cross(const TileSettings& settings, gf::Id b1, gf::Id b2, gf::Id b3, gf::Random& random, const Frontier& frontier12, const Frontier& frontier31) {
+      Tile tile(settings);
+      int half = settings.size / 2;
 
-      gf::Vector2i limitTopRight[] = { right(TileSize2 - 1 - frontier12.offset), top(TileSize2 + frontier12.offset) };
+      gf::Vector2i limitTopRight[] = { right(settings, half - 1 - frontier12.offset), top(settings, half + frontier12.offset) };
 
-      auto lineTopRight = makeLine(limitTopRight, random);
+      auto lineTopRight = makeLine(settings, limitTopRight, random);
 
       for (auto point : lineTopRight) {
         tile.pixels(point) = b2;
       }
 
-      gf::Vector2i limitBottomLeft[] = { left(TileSize2 - frontier31.offset), bottom(TileSize2 - 1 + frontier31.offset) };
+      gf::Vector2i limitBottomLeft[] = { left(settings, half - frontier31.offset), bottom(settings, half - 1 + frontier31.offset) };
 
-      auto lineBottomLeft = makeLine(limitBottomLeft, random);
+      auto lineBottomLeft = makeLine(settings, limitBottomLeft, random);
 
       for (auto point : lineBottomLeft) {
         tile.pixels(point) = b3;
       }
 
-      fillBiomeFrom(tile.pixels, CornerTopLeft, b1);
-      fillBiomeFrom(tile.pixels, CornerBottomRight, b1);
-      fillBiomeFrom(tile.pixels, CornerTopRight, b2);
-      fillBiomeFrom(tile.pixels, CornerBottomLeft, b3);
+      fillBiomeFrom(tile.pixels, cornerTopLeft(settings), b1);
+      fillBiomeFrom(tile.pixels, cornerBottomRight(settings), b1);
+      fillBiomeFrom(tile.pixels, cornerTopRight(settings), b2);
+      fillBiomeFrom(tile.pixels, cornerBottomLeft(settings), b3);
 
       tile.terrain[TerrainTopLeft] = tile.terrain[TerrainBottomRight] = b1;
       tile.terrain[TerrainTopRight] = b2;
@@ -450,25 +473,25 @@ namespace tlgn {
 
     auto frontier = db.getFrontier(b1, b2);
 
-    tileset({ 0, 0 }) = generateCorner(b2, b1, Corner::BottomLeft, random, frontier.inverse());
-    tileset({ 0, 1 }) = generateCross(b2, b1, random, frontier.inverse());
-    tileset({ 0, 2 }) = generateCorner(b2, b1, Corner::TopRight, random, frontier.inverse());
-    tileset({ 0, 3 }) = generateFull(b1);
+    tileset({ 0, 0 }) = generateCorner(db.settings.tile, b2, b1, Corner::BottomLeft, random, frontier.inverse());
+    tileset({ 0, 1 }) = generateCross(db.settings.tile, b2, b1, random, frontier.inverse());
+    tileset({ 0, 2 }) = generateCorner(db.settings.tile, b2, b1, Corner::TopRight, random, frontier.inverse());
+    tileset({ 0, 3 }) = generateFull(db.settings.tile, b1);
 
-    tileset({ 1, 0 }) = generateSplit(b1, b2, Split::Vertical, random, frontier);
-    tileset({ 1, 1 }) = generateCorner(b1, b2, Corner::TopLeft, random, frontier);
-    tileset({ 1, 2 }) = generateSplit(b2, b1, Split::Horizontal, random, frontier.inverse());
-    tileset({ 1, 3 }) = generateCorner(b2, b1, Corner::BottomRight, random, frontier.inverse());
+    tileset({ 1, 0 }) = generateSplit(db.settings.tile, b1, b2, Split::Vertical, random, frontier);
+    tileset({ 1, 1 }) = generateCorner(db.settings.tile, b1, b2, Corner::TopLeft, random, frontier);
+    tileset({ 1, 2 }) = generateSplit(db.settings.tile, b2, b1, Split::Horizontal, random, frontier.inverse());
+    tileset({ 1, 3 }) = generateCorner(db.settings.tile, b2, b1, Corner::BottomRight, random, frontier.inverse());
 
-    tileset({ 2, 0 }) = generateCorner(b1, b2, Corner::TopRight, random, frontier);
-    tileset({ 2, 1 }) = generateFull(b2);
-    tileset({ 2, 2 }) = generateCorner(b1, b2, Corner::BottomLeft, random, frontier);
-    tileset({ 2, 3 }) = generateCross(b1, b2, random, frontier);
+    tileset({ 2, 0 }) = generateCorner(db.settings.tile, b1, b2, Corner::TopRight, random, frontier);
+    tileset({ 2, 1 }) = generateFull(db.settings.tile, b2);
+    tileset({ 2, 2 }) = generateCorner(db.settings.tile, b1, b2, Corner::BottomLeft, random, frontier);
+    tileset({ 2, 3 }) = generateCross(db.settings.tile, b1, b2, random, frontier);
 
-    tileset({ 3, 0 }) = generateSplit(b1, b2, Split::Horizontal, random, frontier);
-    tileset({ 3, 1 }) = generateCorner(b1, b2, Corner::BottomRight, random, frontier);
-    tileset({ 3, 2 }) = generateSplit(b2, b1, Split::Vertical, random, frontier.inverse());
-    tileset({ 3, 3 }) = generateCorner(b2, b1, Corner::TopLeft, random, frontier.inverse());
+    tileset({ 3, 0 }) = generateSplit(db.settings.tile, b1, b2, Split::Horizontal, random, frontier);
+    tileset({ 3, 1 }) = generateCorner(db.settings.tile, b1, b2, Corner::BottomRight, random, frontier);
+    tileset({ 3, 2 }) = generateSplit(db.settings.tile, b2, b1, Split::Vertical, random, frontier.inverse());
+    tileset({ 3, 3 }) = generateCorner(db.settings.tile, b2, b1, Corner::TopLeft, random, frontier.inverse());
 
     return tileset;
   }
@@ -502,47 +525,47 @@ namespace tlgn {
     auto frontier31 = db.getFrontier(b3, b1);
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 0, q }) = generate211(b1, b2, b3, random, frontier12, frontier23, frontier31);
+      tileset({ 0, q }) = generate211(db.settings.tile, b1, b2, b3, random, frontier12, frontier23, frontier31);
       tileset({ 0, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 1, q }) = generate211(b2, b3, b1, random, frontier23, frontier31, frontier12);
+      tileset({ 1, q }) = generate211(db.settings.tile, b2, b3, b1, random, frontier23, frontier31, frontier12);
       tileset({ 1, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 2, q }) = generate211(b3, b1, b2, random, frontier31, frontier12, frontier23);
+      tileset({ 2, q }) = generate211(db.settings.tile, b3, b1, b2, random, frontier31, frontier12, frontier23);
       tileset({ 2, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 3, q }) = generate211(b1, b3, b2, random, frontier31.inverse(), frontier23.inverse(), frontier12.inverse());
+      tileset({ 3, q }) = generate211(db.settings.tile, b1, b3, b2, random, frontier31.inverse(), frontier23.inverse(), frontier12.inverse());
       tileset({ 3, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 4, q }) = generate211(b3, b2, b1, random, frontier23.inverse(), frontier12.inverse(), frontier31.inverse());
+      tileset({ 4, q }) = generate211(db.settings.tile, b3, b2, b1, random, frontier23.inverse(), frontier12.inverse(), frontier31.inverse());
       tileset({ 4, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 5, q }) = generate211(b2, b1, b3, random, frontier12.inverse(), frontier31.inverse(), frontier23.inverse());
+      tileset({ 5, q }) = generate211(db.settings.tile, b2, b1, b3, random, frontier12.inverse(), frontier31.inverse(), frontier23.inverse());
       tileset({ 5, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 6, q }) = generate211Cross(b1, b2, b3, random, frontier12, frontier31);
+      tileset({ 6, q }) = generate211Cross(db.settings.tile, b1, b2, b3, random, frontier12, frontier31);
       tileset({ 6, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 7, q }) = generate211Cross(b2, b3, b1, random, frontier23, frontier12);
+      tileset({ 7, q }) = generate211Cross(db.settings.tile, b2, b3, b1, random, frontier23, frontier12);
       tileset({ 7, q }).rotate(q);
     }
 
     for (int q = 0; q < 4; ++q) {
-      tileset({ 8, q }) = generate211Cross(b3, b1, b2, random, frontier31, frontier23);
+      tileset({ 8, q }) = generate211Cross(db.settings.tile, b3, b1, b2, random, frontier31, frontier23);
       tileset({ 8, q }).rotate(q);
     }
 

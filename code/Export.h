@@ -6,6 +6,7 @@
 #include <iosfwd>
 
 #include "Database.h"
+#include "Settings.h"
 #include "Tile.h"
 #include "Tileset.h"
 
@@ -15,7 +16,7 @@ namespace tlgn {
     int startingPixelRow = 0;
   };
 
-  void exportTilesetsToImage(std::vector<Tileset>& tilesets, Colors& image, ImageContext& ctx);
+  void exportTilesetsToImage(std::vector<Tileset>& tilesets, const Settings& settings, Colors& image, ImageContext& ctx);
   void exportImageToFile(const Colors& image, std::ostream& os);
 
   struct Terrain {

@@ -10,7 +10,7 @@ add_executable(tilegen
   Tileset.cc
 )
 
-target_link_libraries(tilegen gf::gf0)
+target_link_libraries(tilegen gf::gfcore0)
 
 target_include_directories(tilegen
   PRIVATE
