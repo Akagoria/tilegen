@@ -180,7 +180,7 @@ namespace tlgn {
 
     template<typename T>
     std::ostream& operator<<(std::ostream& os, const KV<T>& kv) {
-      return os << kv.key << '=' << '"' << kv.key << '"';
+      return os << kv.key << '=' << '"' << kv.value << '"';
     }
 
   }
@@ -229,7 +229,7 @@ namespace tlgn {
       if (terrain.fences.count > 0) {
         os << ">\n";
         os << "\t<properties>\n";
-        os << "\t\t<property " << kv("name", "fence_count") << ' ' << kv("type", "int") << kv("value", terrain.fences.count) << " />\n";
+        os << "\t\t<property " << kv("name", "fence_count") << ' ' << kv("type", "int") << ' ' << kv("value", terrain.fences.count) << " />\n";
 
         for (int i = 0; i < terrain.fences.count; ++i) {
           os << "\t\t<property name=\"fence" << i << "\" value=\"" << dumpTerrainFence(terrain.fences.fence[i].d1) << dumpTerrainFence(terrain.fences.fence[i].d2)  << "\"/>\n";
