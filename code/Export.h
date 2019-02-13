@@ -17,7 +17,7 @@ namespace tlgn {
   };
 
   void exportTilesetsToImage(std::vector<Tileset>& tilesets, const Settings& settings, Colors& image, ImageContext& ctx);
-  void exportImageToFile(const Colors& image, std::ostream& os);
+  void exportImageToFile(const Colors& image, const gf::Path& filename);
 
   struct Terrain {
     std::array<int, 4> indices;

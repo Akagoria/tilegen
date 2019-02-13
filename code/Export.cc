@@ -1,6 +1,7 @@
 #include "Export.h"
 
 #include <gf/Color.h>
+#include <gf/Image.h>
 #include <gf/VectorOps.h>
 
 #include "Settings.h"
@@ -87,9 +88,24 @@ namespace tlgn {
     ctx.startingPixelRow += numberOfRows * tilesetSize.height * settings.tile.getExtendedSize();
   }
 
-  void exportImageToFile(const Colors& image, std::ostream& os) {
+  void exportImageToFile(const Colors& image, const gf::Path& filename) {
     auto size = image.getSize();
 
+    gf::Image out;
+    out.create(size, gf::Color::toRgba32(gf::Color::Transparent));
+
+    for (auto j : image.getRowRange()) {
+      for (auto i : image.getColRange()) {
+        gf::Color4f raw = image({ i, j });
+        gf::Color4u color = gf::Color::toRgba32(raw);
+
+        out.setPixel({ i, j }, color);
+      }
+    }
+
+    out.saveToFile(filename);
+
+#if 0
     os << "P7\n";
     os << "WIDTH " << size.width << '\n';
     os << "HEIGHT " << size.height << '\n';
@@ -108,6 +124,7 @@ namespace tlgn {
         }
       }
     }
+#endif
   }
 
   void exportTilesetsToTerrains(const std::vector<Tileset>& tilesets, const Database& db, Terrains& terrains) {

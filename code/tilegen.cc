@@ -91,11 +91,7 @@ int main(int argc, char *argv[]) {
   tlgn::exportTilesetsToImage(overlays, db.settings, image, ctx);
 
   std::cout << "Generating biome image...\n";
-
-  {
-    std::ofstream file("biomes.pnm");
-    tlgn::exportImageToFile(image, file);
-  }
+  tlgn::exportImageToFile(image, "biomes.png");
 
   tlgn::Terrains terrains;
   tlgn::exportTilesetsToTerrains(wang2, db, terrains);
