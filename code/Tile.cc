@@ -248,18 +248,31 @@ namespace tlgn {
   }
 
   void Tile::fillColorsBorder() {
-    for (int i = 0; i < size; ++i) {
-      // top
-      colors({ 1 + i, 0 }) = colors({ 1 + i, 1 });
-      // bottom
-      colors({ 1 + i, size + 1 }) = colors({ 1 + i, size });
+    if (spacing == 0) {
+      return;
     }
 
-    for (int i = 0; i < size / 2; ++i) {
-      // left
-      colors({ 0, i }) = colors({ 1, i });
-      // right
-      colors({ size + 1, i }) = colors({ size, i });
+    auto dims = colors.getSize();
+
+    assert(dims.width = size + 2 * spacing);
+    assert(dims.height = size + 2 * spacing);
+
+    for (int i = 0; i < size; ++i) {
+      for (int j = 0; j < spacing; ++j) {
+        // top
+        colors({ i + spacing, j }) = colors({ i + spacing, spacing });
+        // bottom
+        colors({ i + spacing, dims.height - j - 1 }) = colors({ i + spacing, dims.height - spacing - 1 });
+      }
+    }
+
+    for (int i = 0; i < size + 2 * spacing; ++i) {
+      for (int j = 0; j < spacing; ++j) {
+        // left
+        colors({ j, i }) = colors({ spacing, i });
+        // right
+        colors({ dims.width - j - 1, i }) = colors({ dims.width - spacing - 1, i });
+      }
     }
   }
 
