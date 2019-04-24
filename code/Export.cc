@@ -33,8 +33,9 @@ namespace tlgn {
     auto imageSize = image.getSize();
     auto tilesetSize = tilesets.front().getSize();
 
-//     std::cout << "Image size: " << std::dec << imageSize.width << ',' << imageSize.height << '\n';
-//     std::cout << "Tileset size: " << tilesetSize.width << ',' << tilesetSize.height << '\n';
+    std::cout << "===================================================\n";
+    std::cout << "Image size: " << std::dec << imageSize.width << ',' << imageSize.height << '\n';
+    std::cout << "Tileset size: " << tilesetSize.width << ',' << tilesetSize.height << '\n';
 
     gf::Vector2i offset(0, ctx.startingPixelRow);
 
@@ -43,9 +44,9 @@ namespace tlgn {
     int tilesPerRow = imageSize.width / settings.tile.getExtendedSize();
     int idOffset = (ctx.startingPixelRow / settings.tile.getExtendedSize()) * tilesPerRow;
 
-//     std::cout << std::dec << "startingRow: " << startingRow << '\n';
-//     std::cout << std::dec << "tilesPerRow: " << tilesPerRow << '\n';
-//     std::cout << "idOffset: " << idOffset << '\n';
+    std::cout << std::dec << "startingPixelRow: " << ctx.startingPixelRow << '\n';
+    std::cout << std::dec << "tilesPerRow: " << tilesPerRow << '\n';
+    std::cout << "idOffset: " << idOffset << '\n';
 
     int indexTileset = 0;
 
@@ -58,7 +59,7 @@ namespace tlgn {
 
       int idTileset = offsetTileset.y * tilesetSize.height * tilesPerRow + offsetTileset.x * tilesetSize.width;
 
-//       std::cout << "idTileset: " << idTileset << '\n';
+      std::cout << "idTileset: " << idTileset << '\n';
 
       int indexTile = 0;
 
@@ -69,10 +70,10 @@ namespace tlgn {
 
         gf::Vector2i totalOffset = offset + (offsetTileset * tilesetSize + offsetTile) * settings.tile.getExtendedSize();
 
-//         std::cout << "offset: " << std::dec << offset.x << ',' << offset.y << '\n';
-//         std::cout << "offsetTileset: " << std::dec << offsetTileset.x << ',' << offsetTileset.y << '\n';
-//         std::cout << "offsetTile: " << std::dec << offsetTile.x << ',' << offsetTile.y << '\n';
-//         std::cout << "totalOffset: " << std::dec << totalOffset.x << ',' << totalOffset.y << '\n';
+        std::cout << "offset: " << std::dec << offset.x << ',' << offset.y << '\n';
+        std::cout << "offsetTileset: " << std::dec << offsetTileset.x << ',' << offsetTileset.y << '\n';
+        std::cout << "offsetTile: " << std::dec << offsetTile.x << ',' << offsetTile.y << '\n';
+        std::cout << "totalOffset: " << std::dec << totalOffset.x << ',' << totalOffset.y << '\n';
 
         blit(tile.colors, image, totalOffset);
 
@@ -94,37 +95,13 @@ namespace tlgn {
     gf::Image out;
     out.create(size, gf::Color::toRgba32(gf::Color::Transparent));
 
-    for (auto j : image.getRowRange()) {
-      for (auto i : image.getColRange()) {
-        gf::Color4f raw = image({ i, j });
-        gf::Color4u color = gf::Color::toRgba32(raw);
-
-        out.setPixel({ i, j }, color);
-      }
+    for (auto pos : image.getPositionRange()) {
+      gf::Color4f raw = image(pos);
+      gf::Color4u color = gf::Color::toRgba32(raw);
+      out.setPixel(pos, color);
     }
 
     out.saveToFile(filename);
-
-#if 0
-    os << "P7\n";
-    os << "WIDTH " << size.width << '\n';
-    os << "HEIGHT " << size.height << '\n';
-    os << "DEPTH " << 4 << '\n';
-    os << "MAXVAL " << 255 << '\n';
-    os << "TUPLTYPE RGB_ALPHA\n";
-    os << "ENDHDR\n";
-
-    for (auto j : image.getRowRange()) {
-      for (auto i : image.getColRange()) {
-        gf::Color4f raw = image({ i, j });
-        gf::Color4u color = gf::Color::toRgba32(raw);
-
-        for (char channel : color) {
-          os.write(&channel, 1);
-        }
-      }
-    }
-#endif
   }
 
   void exportTilesetsToTerrains(const std::vector<Tileset>& tilesets, const Database& db, Terrains& terrains) {

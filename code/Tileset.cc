@@ -572,6 +572,19 @@ namespace tlgn {
     return tileset;
   }
 
+
+  Tileset generatePlainTileset(gf::Id b0, const Database& db) {
+    Tileset tileset({ 4, 4 }, gf::None);
+
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        tileset({ i, j }) = generateFull(db.settings.tile, b0);
+      }
+    }
+
+    return tileset;
+  }
+
 }
 
 

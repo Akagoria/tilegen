@@ -12,6 +12,7 @@ namespace tlgn {
 
   using Tileset = gf::Array2D<Tile, int>;
 
+  Tileset generatePlainTileset(gf::Id b0, const Database& db);
   Tileset generateTwoCornersWangTileset(gf::Id b1, gf::Id b2, gf::Random& random, const Database& db);
   Tileset generateThreeCornersWangTileset(gf::Id b1, gf::Id b2, gf::Id b3, gf::Random& random, const Database& db);
 

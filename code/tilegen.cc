@@ -29,7 +29,23 @@ int main(int argc, char *argv[]) {
 
   gf::Random random;
 
-  std::cout << "Computing tiles (1/3)...\n";
+  std::cout << "Computing tiles (1/4)...\n";
+
+  std::vector<tlgn::Tileset> plain;
+
+  {
+    std::map<int, gf::Id> biomes;
+
+    for (auto& pair : db.biomes) {
+      biomes.insert({ pair.second.index, pair.first });
+    }
+
+    for (auto& kv : biomes) {
+      plain.push_back(tlgn::generatePlainTileset(kv.second, db));
+    }
+  }
+
+  std::cout << "Computing tiles (2/4)...\n";
 
   std::vector<tlgn::Tileset> wang2;
 
@@ -37,7 +53,7 @@ int main(int argc, char *argv[]) {
     wang2.push_back(tlgn::generateTwoCornersWangTileset(duo.b1, duo.b2, random, db));
   }
 
-  std::cout << "Computing tiles (2/3)...\n";
+  std::cout << "Computing tiles (3/4)...\n";
 
   std::vector<tlgn::Tileset> wang3;
 
@@ -45,7 +61,7 @@ int main(int argc, char *argv[]) {
     wang3.push_back(tlgn::generateThreeCornersWangTileset(trio.b1, trio.b2, trio.b3, random, db));
   }
 
-  std::cout << "Computing tiles (3/3)...\n";
+  std::cout << "Computing tiles (4/4)...\n";
 
   std::vector<tlgn::Tileset> overlays;
 
@@ -55,7 +71,15 @@ int main(int argc, char *argv[]) {
 
   // generate colors
 
-  std::cout << "Computing colors (1/3)...\n";
+  std::cout << "Computing colors (1/4)...\n";
+
+  for (auto& tileset : plain) {
+    for (auto& tile : tileset) {
+      tile.colorize(db.biomes, random);
+    }
+  }
+
+  std::cout << "Computing colors (2/4)...\n";
 
   for (auto& tileset : wang2) {
     for (auto& tile : tileset) {
@@ -63,7 +87,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::cout << "Computing colors (2/3)...\n";
+  std::cout << "Computing colors (3/4)...\n";
 
   for (auto& tileset : wang3) {
     for (auto& tile : tileset) {
@@ -71,7 +95,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::cout << "Computing colors (3/3)...\n";
+  std::cout << "Computing colors (4/4)...\n";
 
   for (auto& tileset : overlays) {
     for (auto& tile : tileset) {
@@ -86,6 +110,7 @@ int main(int argc, char *argv[]) {
   tlgn::Colors image(db.settings.image);
 
   tlgn::ImageContext ctx;
+  tlgn::exportTilesetsToImage(plain, db.settings, image, ctx);
   tlgn::exportTilesetsToImage(wang2, db.settings, image, ctx);
   tlgn::exportTilesetsToImage(wang3, db.settings, image, ctx);
   tlgn::exportTilesetsToImage(overlays, db.settings, image, ctx);
@@ -94,6 +119,7 @@ int main(int argc, char *argv[]) {
   tlgn::exportImageToFile(image, "biomes.png");
 
   tlgn::Terrains terrains;
+  tlgn::exportTilesetsToTerrains(plain, db, terrains);
   tlgn::exportTilesetsToTerrains(wang2, db, terrains);
   tlgn::exportTilesetsToTerrains(wang3, db, terrains);
   tlgn::exportTilesetsToTerrains(overlays, db, terrains);
