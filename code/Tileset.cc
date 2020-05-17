@@ -129,21 +129,21 @@ namespace tlgn {
     Tile generateSplit(const TileSettings& settings, gf::Id b1, gf::Id b2, Split s, gf::Random& random, const Frontier& frontier) {
       Tile tile(settings);
 
-      gf::Vector2i start, stop;
+      gf::Vector2i endPoints[2];
       int half = settings.size / 2;
 
       switch (s) {
         case Split::Horizontal:
-          start = left(settings, half + frontier.offset);
-          stop = right(settings, half + frontier.offset);
+          endPoints[0] = left(settings, half + frontier.offset);
+          endPoints[1] = right(settings, half + frontier.offset);
           break;
         case Split::Vertical:
-          start = top(settings, half + frontier.offset);
-          stop = bottom(settings, half + frontier.offset);
+          endPoints[0] = top(settings, half + frontier.offset);
+          endPoints[1] = bottom(settings, half + frontier.offset);
           break;
       }
 
-      auto line = makeLine(settings, { start, stop }, random);
+      auto line = makeLine(settings, endPoints, random);
 
       for (auto point : line) {
         tile.pixels(point) = b2;
@@ -198,29 +198,29 @@ namespace tlgn {
     Tile generateCorner(const TileSettings& settings, gf::Id b1, gf::Id b2, Corner c, gf::Random& random, const Frontier& frontier) {
       Tile tile(settings);
 
-      gf::Vector2i start, stop;
+      gf::Vector2i endPoints[2];
       int half = settings.size / 2;
 
       switch (c) {
         case Corner::TopLeft:
-          start = top(settings, half - 1 + frontier.offset);
-          stop = left(settings, half - 1 + frontier.offset);
+          endPoints[0] = top(settings, half - 1 + frontier.offset);
+          endPoints[1] = left(settings, half - 1 + frontier.offset);
           break;
         case Corner::TopRight:
-          start = top(settings, half - frontier.offset);
-          stop = right(settings, half - 1 + frontier.offset);
+          endPoints[0] = top(settings, half - frontier.offset);
+          endPoints[1] = right(settings, half - 1 + frontier.offset);
           break;
         case Corner::BottomLeft:
-          start = bottom(settings, half - 1 + frontier.offset);
-          stop = left(settings, half - frontier.offset);
+          endPoints[0] = bottom(settings, half - 1 + frontier.offset);
+          endPoints[1] = left(settings, half - frontier.offset);
           break;
         case Corner::BottomRight:
-          start = bottom(settings, half - frontier.offset);
-          stop = right(settings, half - frontier.offset);
+          endPoints[0] = bottom(settings, half - frontier.offset);
+          endPoints[1] = right(settings, half - frontier.offset);
           break;
       }
 
-      auto line = makeLine(settings, { start, stop }, random);
+      auto line = makeLine(settings, endPoints, random);
 
       for (auto point : line) {
         tile.pixels(point) = b1;

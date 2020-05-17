@@ -92,8 +92,7 @@ namespace tlgn {
   void exportImageToFile(const Colors& image, const gf::Path& filename) {
     auto size = image.getSize();
 
-    gf::Image out;
-    out.create(size, gf::Color::toRgba32(gf::Color::Transparent));
+    gf::Image out(size, gf::Color::toRgba32(gf::Color::Transparent));
 
     for (auto pos : image.getPositionRange()) {
       gf::Color4f raw = image(pos);
